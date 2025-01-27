@@ -49,7 +49,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Transactional(readOnly = true)
     private CompletableFuture<Content> findByIdOrElseThrow(UUID contentId) {
-        log.debug("Searching for the content {} in the database asynchronously.", contentId);
+        log.debug("Searching for the content {} in the database.", contentId);
         Content content = contentRepository.findById(contentId).orElseThrow(() -> {
             log.error("The content {} is not found in the database.", contentId);
             return new RuntimeException("The content %s is not found in the database.".formatted(contentId));
@@ -59,7 +59,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     public CompletableFuture<Content> findByIdAndAuthorIdOrElseThrow(UUID contentId, UUID authorId) {
-        log.debug("Searching for the content {} of the author {} in the database asynchronously.", contentId, authorId);
+        log.debug("Searching for the content {} of the author {} in the database.", contentId, authorId);
         return contentRepository.findByIdAndAuthorId(contentId, authorId)
             .thenApply(content -> content.orElseThrow(() -> {
                 log.error("The content {} of the author {} is not found in the database.", contentId, authorId);
@@ -99,13 +99,14 @@ public class ContentServiceImpl implements ContentService {
         UUID contentId = contentTagsDto.getId();
         Set<UUID> tagIds = new HashSet<>(contentTagsDto.getTagIds());
 
-        return findAllTagsByIdsOrElseThrow(tagIds, contentId, authorId)
-            .thenCombine(findByIdAndAuthorIdOrElseThrow(contentId, authorId), (tagsToBeProcessed, content) -> {
-                operationOnTags.accept(content.getTags(), tagsToBeProcessed);
-                return content;
-            })
-            .thenAccept(content -> {
-                log.debug("Updating the content {} with {} tags {} asynchronously.", contentId, opKeyWord, tagIds);
+        return findByIdAndAuthorIdOrElseThrow(contentId, authorId)
+            .thenAcceptAsync(content -> {
+                List<Tag> currentTags = content.getTags();
+                List<Tag> tagsToBeProcessed = findAllTagsByIdsOrElseThrow(tagIds, contentId, authorId);
+
+                operationOnTags.accept(currentTags, tagsToBeProcessed);
+
+                log.debug("Updating the content {} with {} tags {} to the database.", contentId, opKeyWord, tagIds);
                 contentRepository.save(content);
             })
             .exceptionally(e -> {
@@ -114,25 +115,20 @@ public class ContentServiceImpl implements ContentService {
             });
     }
 
-    private CompletableFuture<List<Tag>> findAllTagsByIdsOrElseThrow(Set<UUID> tagIds, UUID contentId, UUID authorId) {
-        return CompletableFuture.supplyAsync(() -> {
-            log.debug("Searching for the tags {} in the database.", tagIds);
-            List<Tag> tags = tagRepository.findAllById(tagIds);
-            List<UUID> nonExistingIds = tagIds.stream()
-                .filter(id -> tags.stream().noneMatch(tag -> tag.getId().equals(id)))
-                .toList();
+    private List<Tag> findAllTagsByIdsOrElseThrow(Set<UUID> tagIds, UUID contentId, UUID authorId) {
+        log.debug("Searching for the tags {} in the database.", tagIds);
+        List<Tag> tags = tagRepository.findAllById(tagIds);
+        List<UUID> nonExistingIds = tagIds.stream()
+            .filter(id -> tags.stream().noneMatch(tag -> tag.getId().equals(id)))
+            .toList();
 
-            if (!nonExistingIds.isEmpty()) {
-                log.error("Provided non-existing tag IDs {} when updating the content {} by author {}.",
-                    tagIds, contentId, authorId);
-                throw new RuntimeException("Provided non-existing tag IDs %s when updating the content %s by author %s."
-                    .formatted(tagIds, contentId, authorId));
-            }
+        if (!nonExistingIds.isEmpty()) {
+            log.error("Provided non-existing tag IDs {} when updating the content {} by author {}.",
+                tagIds, contentId, authorId);
+            throw new RuntimeException("Provided non-existing tag IDs %s when updating the content %s by author %s."
+                .formatted(tagIds, contentId, authorId));
+        }
 
-            return tags;
-        }).exceptionally(e -> {
-            log.error("Error occurred while fetching tags: {}", e.getMessage());
-            throw new RuntimeException("Failed to fetch tags", e);
-        });
+        return tags;
     }
 }

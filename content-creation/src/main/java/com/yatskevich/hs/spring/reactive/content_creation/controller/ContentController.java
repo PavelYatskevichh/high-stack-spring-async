@@ -71,7 +71,6 @@ public class ContentController { //TODO try to implement ContentCreationFeign
         return contentService.deleteTags(contentTagsDto, authorId);
     }
 
-    //TODO add role dependent logic
     @PutMapping("/status")
     public CompletableFuture<Void> updateStatus(@RequestBody @Valid ContentStatusDto contentStatusDto) {
         log.debug("Change status to {} of the content {}.",
