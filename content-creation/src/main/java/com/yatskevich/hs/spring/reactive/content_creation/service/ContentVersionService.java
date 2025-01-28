@@ -11,7 +11,7 @@ public interface ContentVersionService {
 
     CompletableFuture<List<RevisionDto>> getAllByContentAndAuthor(UUID contentId, UUID authorId);
 
-    CompletableFuture<Void> createRevision(RevisionDataDto revisionDataDto, UUID authorId);
+    void createRevision(RevisionDataDto revisionDataDto, UUID authorId);
 
     CompletableFuture<Void> updateStatus(ContentStatusDto contentStatusDto);
 }

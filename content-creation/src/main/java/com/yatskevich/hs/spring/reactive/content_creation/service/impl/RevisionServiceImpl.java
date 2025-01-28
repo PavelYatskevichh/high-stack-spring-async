@@ -8,6 +8,7 @@ import com.yatskevich.hs.spring.reactive.content_creation.service.DeltaService;
 import com.yatskevich.hs.spring.reactive.content_creation.service.RevisionService;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +28,9 @@ public class RevisionServiceImpl implements RevisionService {
     @Override
     public CompletableFuture<List<Revision>> getAllByContentIdAndContentAuthorId(UUID contentId, UUID authorId) {
         return CompletableFuture.supplyAsync(() -> {
-                log.debug("Searching for all the revisions for the content {} of the author {} in the database.", contentId, authorId);
-                return null;
-            })
-            .thenCompose(v -> revisionRepository.findAllByContentIdAndContentAuthorId(contentId, authorId));
-
+            log.debug("Searching for all the revisions for the content {} of the author {} in the database.", contentId, authorId);
+            return revisionRepository.findAllByContentIdAndContentAuthorId(contentId, authorId);
+        });
     }
 
     @Override
@@ -57,36 +56,32 @@ public class RevisionServiceImpl implements RevisionService {
     }
 
     @Override
-    public CompletableFuture<Void> create(Content content, RevisionDataDto revisionDataDto) {
-        return revisionRepository.findAllByContentIdAndContentAuthorId(content.getId(), content.getAuthorId())
-            .thenCompose(revisions -> {
-                Integer revisionNumber = revisions.stream()
-                    .max(Comparator.comparingInt(Revision::getRevisionNumber))
-                    .map(lastRevision -> lastRevision.getRevisionNumber() + 1)
-                    .orElse(1);
+    public void create(Content content, RevisionDataDto revisionDataDto) {
+        Optional<Revision> revisionOptional = revisionRepository
+            .findAllByContentIdAndContentAuthorId(content.getId(), content.getAuthorId()).stream()
+            .max(Comparator.comparingInt(Revision::getRevisionNumber));
 
-                CompletableFuture<String> titleDeltaFuture =
-                    deltaService.getDelta(content.getTitle(), revisionDataDto.getContentTitle());
-                CompletableFuture<String> descriptionDeltaFuture =
-                    deltaService.getDelta(content.getDescription(), revisionDataDto.getContentDescription());
-                CompletableFuture<String> bodyDeltaFuture =
-                    deltaService.getDelta(content.getBody(), revisionDataDto.getContentBody());
+        Integer revisionNumber = revisionOptional.map(value -> value.getRevisionNumber() + 1).orElse(1);
 
-                return CompletableFuture.allOf(titleDeltaFuture, descriptionDeltaFuture, bodyDeltaFuture)
-                    .thenApply(v -> {
-                        Revision revision = new Revision();
-                        revision.setContent(content);
-                        revision.setRevisionNumber(revisionNumber);
-                        revision.setDescription(revisionDataDto.getDescription());
-                        revision.setTitleDelta(titleDeltaFuture.join());
-                        revision.setDescriptionDelta(descriptionDeltaFuture.join());
-                        revision.setBodyDelta(bodyDeltaFuture.join());
-                        return revision;
-                    }).exceptionally(e -> {
-                        log.error("Error occurred while creating revision: {}", e.getMessage());
-                        throw new RuntimeException("Failed to create new revision", e);
-                    });
-            })
-            .thenCompose(revision -> CompletableFuture.runAsync(() -> revisionRepository.save(revision)));
+        String titleDelta, descriptionDelta, bodyDelta;
+
+        try {
+            titleDelta = deltaService.getDelta(content.getTitle(), revisionDataDto.getContentTitle()).get();
+            descriptionDelta = deltaService.getDelta(content.getDescription(), revisionDataDto.getContentDescription())
+                .get();
+            bodyDelta = deltaService.getDelta(content.getBody(), revisionDataDto.getContentBody()).get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        Revision revision = new Revision();
+        revision.setContent(content);
+        revision.setRevisionNumber(revisionNumber);
+        revision.setDescription(revisionDataDto.getDescription());
+        revision.setTitleDelta(titleDelta);
+        revision.setDescriptionDelta(descriptionDelta);
+        revision.setBodyDelta(bodyDelta);
+
+        revisionRepository.save(revision);
     }
 }

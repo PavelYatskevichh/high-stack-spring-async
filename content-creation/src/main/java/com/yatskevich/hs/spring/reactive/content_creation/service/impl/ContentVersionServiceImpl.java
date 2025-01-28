@@ -38,7 +38,7 @@ public class ContentVersionServiceImpl implements ContentVersionService {
 
         CompletableFuture<List<Revision>> revisionsFuture = revisionService.getAllByContentIdAndContentAuthorId(
             contentId, authorId);
-        CompletableFuture<Content> contentFuture = contentService.findByIdAndAuthorIdOrElseThrow(contentId, authorId);
+        CompletableFuture<Content> contentFuture = contentService.findByIdAndAuthorIdOrElseThrowAsync(contentId, authorId);
 
         return revisionsFuture.thenCombine(contentFuture, (revisions, content) -> {
             List<CompletableFuture<RevisionDto>> revisionDtoFutures = new ArrayList<>();
@@ -78,11 +78,10 @@ public class ContentVersionServiceImpl implements ContentVersionService {
     }
 
     @Override
-    public CompletableFuture<Void> createRevision(RevisionDataDto revisionDataDto, UUID authorId) {
+    public void createRevision(RevisionDataDto revisionDataDto, UUID authorId) {
         UUID contentId = revisionDataDto.getContentId();
-
-        return contentService.findByIdAndAuthorIdOrElseThrow(contentId, authorId)
-            .thenCompose(content -> revisionService.create(content, revisionDataDto));
+        Content content = contentService.findByIdAndAuthorIdOrElseThrow(contentId, authorId);
+        revisionService.create(content, revisionDataDto);
     }
 
     @Override

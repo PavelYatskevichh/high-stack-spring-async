@@ -15,8 +15,8 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
 
     CompletableFuture<List<Content>> findAllByAuthorId(@Param("authorId") UUID authorId);
 
-    CompletableFuture<Optional<Content>> findByIdAndAuthorId(@Param("id") UUID contentId,
-                                                             @Param("userId") UUID authorId);
+    Optional<Content> findByIdAndAuthorId(@Param("id") UUID contentId,
+                                          @Param("userId") UUID authorId);
 
     @Query(value = """
         UPDATE Content

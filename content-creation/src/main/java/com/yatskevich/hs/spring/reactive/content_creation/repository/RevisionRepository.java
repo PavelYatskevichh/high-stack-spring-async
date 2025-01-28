@@ -11,8 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface RevisionRepository extends JpaRepository<Revision, UUID> {
 
-    CompletableFuture<List<Revision>> findAllByContentIdAndContentAuthorId(@Param("contentId") UUID contentId,
-                                                                           @Param("contentAuthorId") UUID authorId);
+    List<Revision> findAllByContentIdAndContentAuthorId(@Param("contentId") UUID contentId,
+                                                        @Param("contentAuthorId") UUID authorId);
 
     @Query(value = """
         FROM Revision r

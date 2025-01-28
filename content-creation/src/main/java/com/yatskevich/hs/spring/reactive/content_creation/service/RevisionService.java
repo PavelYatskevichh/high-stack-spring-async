@@ -15,5 +15,5 @@ public interface RevisionService {
 
     CompletableFuture<Revision> findLastByContentAndAuthor(UUID contentId, UUID authorId);
 
-    CompletableFuture<Void> create(Content content, RevisionDataDto revisionDataDto);
+    void create(Content content, RevisionDataDto revisionDataDto);
 }

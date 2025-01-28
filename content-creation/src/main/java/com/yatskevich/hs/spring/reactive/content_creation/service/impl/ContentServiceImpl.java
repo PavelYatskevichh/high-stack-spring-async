@@ -58,14 +58,26 @@ public class ContentServiceImpl implements ContentService {
     }
 
     @Override
-    public CompletableFuture<Content> findByIdAndAuthorIdOrElseThrow(UUID contentId, UUID authorId) {
-        log.debug("Searching for the content {} of the author {} in the database.", contentId, authorId);
-        return contentRepository.findByIdAndAuthorId(contentId, authorId)
-            .thenApply(content -> content.orElseThrow(() -> {
+    public CompletableFuture<Content> findByIdAndAuthorIdOrElseThrowAsync(UUID contentId, UUID authorId) {
+        return CompletableFuture.supplyAsync(() -> {
+            log.debug("Searching for the content {} of the author {} in the database.", contentId, authorId);
+            return contentRepository.findByIdAndAuthorId(contentId, authorId).orElseThrow(() -> {
                 log.error("The content {} of the author {} is not found in the database.", contentId, authorId);
                 return new RuntimeException("The content %s of the author %s is not found in the database."
                     .formatted(contentId, authorId));
-            }));
+            });
+        });
+    }
+
+    @Override
+    public Content findByIdAndAuthorIdOrElseThrow(UUID contentId, UUID authorId) {
+        log.debug("Searching for the content {} of the author {} in the database.", contentId, authorId);
+        return contentRepository.findByIdAndAuthorId(contentId, authorId).orElseThrow(() -> {
+            log.error("The content {} of the author {} is not found in the database.", contentId, authorId);
+            //FIXME create exception
+            return new RuntimeException("The content %s of the author %s is not found in the database."
+                .formatted(contentId, authorId));
+        });
     }
 
     @Override
@@ -99,7 +111,7 @@ public class ContentServiceImpl implements ContentService {
         UUID contentId = contentTagsDto.getId();
         Set<UUID> tagIds = new HashSet<>(contentTagsDto.getTagIds());
 
-        return findByIdAndAuthorIdOrElseThrow(contentId, authorId)
+        return findByIdAndAuthorIdOrElseThrowAsync(contentId, authorId)
             .thenAcceptAsync(content -> {
                 List<Tag> currentTags = content.getTags();
                 List<Tag> tagsToBeProcessed = findAllTagsByIdsOrElseThrow(tagIds, contentId, authorId);

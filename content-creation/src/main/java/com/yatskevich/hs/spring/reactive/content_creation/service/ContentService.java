@@ -14,7 +14,9 @@ public interface ContentService {
 
     CompletableFuture<ContentDto> getById(UUID contentId);
 
-    CompletableFuture<Content> findByIdAndAuthorIdOrElseThrow(UUID contentId, UUID authorId);
+    CompletableFuture<Content> findByIdAndAuthorIdOrElseThrowAsync(UUID contentId, UUID authorId);
+
+    Content findByIdAndAuthorIdOrElseThrow(UUID contentId, UUID authorId);
 
     CompletableFuture<Void> create(ContentDataDto contentDataDto, UUID authorId);
 

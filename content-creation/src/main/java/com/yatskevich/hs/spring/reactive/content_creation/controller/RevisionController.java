@@ -35,9 +35,9 @@ public class RevisionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CompletableFuture<Void> create(@RequestParam UUID authorId,
+    public void create(@RequestParam UUID authorId,
                                           @RequestBody @Valid RevisionDataDto revisionDataDto) {
         log.debug("Creating new revision for the content {} by author {}.", revisionDataDto.getContentId(), authorId);
-        return contentVersionService.createRevision(revisionDataDto, authorId);
+        contentVersionService.createRevision(revisionDataDto, authorId);
     }
 }
