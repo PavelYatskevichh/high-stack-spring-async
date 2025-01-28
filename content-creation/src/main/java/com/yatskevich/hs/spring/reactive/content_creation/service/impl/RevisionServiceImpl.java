@@ -78,14 +78,13 @@ public class RevisionServiceImpl implements RevisionService {
                         revision.setContent(content);
                         revision.setRevisionNumber(revisionNumber);
                         revision.setDescription(revisionDataDto.getDescription());
-                        try {
-                            revision.setTitleDelta(titleDeltaFuture.get());
-                            revision.setDescriptionDelta(descriptionDeltaFuture.get());
-                            revision.setBodyDelta(bodyDeltaFuture.get());
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to compute deltas", e);
-                        }
+                        revision.setTitleDelta(titleDeltaFuture.join());
+                        revision.setDescriptionDelta(descriptionDeltaFuture.join());
+                        revision.setBodyDelta(bodyDeltaFuture.join());
                         return revision;
+                    }).exceptionally(e -> {
+                        log.error("Error occurred while creating revision: {}", e.getMessage());
+                        throw new RuntimeException("Failed to create new revision", e);
                     });
             })
             .thenCompose(revision -> CompletableFuture.runAsync(() -> revisionRepository.save(revision)));
